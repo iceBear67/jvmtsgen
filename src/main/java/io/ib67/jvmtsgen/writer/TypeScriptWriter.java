@@ -82,7 +82,11 @@ public class TypeScriptWriter {
         }
         sb.append('(').append(TSType.paramSet(fn.parameters())).append(')');
         if (fn.returnType() != TSType.TSPrimitive.VOID) {
-            sb.append(": ").append(fn.returnType());
+            if(fn.returnType() instanceof TSType.TSClass clas){
+                sb.append(": ").append(clas.toRawSignature());
+            }else {
+                sb.append(": ").append(fn.returnType());
+            }
         }
 
         if (fromInterface(methodDecl)
@@ -118,11 +122,12 @@ public class TypeScriptWriter {
         if (feature(WriterFeature.EMIT_DECLARATION_ONLY)) {
             sb.append("declare ");
         }
-        if (classDecl.isInterface() || feature(WriterFeature.ALWAYS_INTERFACE)) {
-            sb.append("interface ");
-        } else {
-            sb.append("class ");
-        }
+        var typePrefix = switch (classDecl.getKind()) {
+            case INTERFACE -> "interface ";
+            case ENUM -> "class "; //todo full enum support
+            case CLASS -> feature(WriterFeature.ALWAYS_INTERFACE) ? "interface " : "class ";
+        };
+        sb.append(typePrefix);
         sb.append(clazType.name()).append(TypeUtil.typeParamString(clazType.typeParam())).append(" {\n");
         for (TSElement element : classDecl.elements()) {
             sb.append(generate(element)).append('\n');
@@ -132,7 +137,7 @@ public class TypeScriptWriter {
     }
 
     protected boolean fromInterface(TSElement element) {
-        return element.getParent() instanceof TSClassDecl decl && decl.isInterface();
+        return element.getParent() instanceof TSClassDecl decl && decl.getKind() == TSClassDecl.Kind.INTERFACE;
     }
 
     protected boolean feature(WriterFeature f) {

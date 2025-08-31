@@ -30,8 +30,8 @@ public class RenamerPass implements ElementPass {
             case TSFieldDecl tf -> tf.getVariableDecl().setType(renameTypeAsis(tf.getVariableDecl().getType()));
             case TSMethod tm -> tm.setType(renameTypeAsis(tm.getType()));
             case TSVarDecl tdcl -> tdcl.setType(renameTypeAsis(tdcl.getType()));
-            default -> {
-            }
+            case TSTypeDecl type -> type.setType(renameTypeAsis(type.getType()));
+            default -> {}
         }
     }
 
@@ -45,6 +45,8 @@ public class RenamerPass implements ElementPass {
                             .withTypeParam(mapTypeMap(tf.typeParam()));
             case TSType.TSIntersection intersection -> intersection.withLeft(renameTypeAsis(intersection.left()))
                     .withRight(renameTypeAsis(intersection.right()));
+            case TSType.TSUnion union -> union.withLeft(renameTypeAsis(union.left()))
+                    .withRight(renameTypeAsis(union.right()));
             case TSType.TSBounded bounded -> bounded.withBound(renameTypeAsis(bounded.bound()));
             default -> type;
         };

@@ -1,6 +1,7 @@
 package io.ib67.jvmtsgen.tsdef;
 
 import io.ib67.jvmtsgen.TypeUtil;
+import io.ib67.kiwi.routine.Uni;
 import lombok.AllArgsConstructor;
 import lombok.With;
 
@@ -12,6 +13,10 @@ public interface TSType {
         Map<String, TSType> typeParam();
     }
 
+    default Uni<TSType> traverse(){
+        return Uni.of(this);
+    }
+
     @With
     record TSUnion(
             TSType left,
@@ -20,6 +25,14 @@ public interface TSType {
         public TSUnion {
             Objects.requireNonNull(left);
             Objects.requireNonNull(right);
+        }
+
+        @Override
+        public Uni<TSType> traverse() {
+            return c -> {
+                left.traverse().onItem(c);
+                right.traverse().onItem(c);
+            };
         }
 
         @Override
@@ -39,6 +52,14 @@ public interface TSType {
         }
 
         @Override
+        public Uni<TSType> traverse() {
+            return c -> {
+                left.traverse().onItem(c);
+                right.traverse().onItem(c);
+            };
+        }
+
+        @Override
         public String toString() {
             return left + " & " + right;
         }
@@ -55,6 +76,14 @@ public interface TSType {
             Objects.requireNonNull(returnType);
             if (parameters == null) parameters = new HashMap<>();
             if (typeParam == null) typeParam = new HashMap<>();
+        }
+
+        @Override
+        public Uni<TSType> traverse() {
+            return c -> {
+                typeParam.values().forEach(i -> i.traverse().onItem(c));
+                parameters.values().forEach(i -> i.traverse().onItem(c));
+            };
         }
 
         @Override
@@ -85,6 +114,16 @@ public interface TSType {
         }
 
         @Override
+        public Uni<TSType> traverse() {
+            return c -> typeParam.values().forEach(i -> i.traverse().onItem(c));
+        }
+
+        public String toRawSignature(){
+            if (typeParam.isEmpty()) return name;
+            return name + "<" + String.join(", ", typeParam.keySet()) + ">";
+        }
+
+        @Override
         public String toString() {
             if (typeParam.isEmpty()) return name;
             return name + "<" + typeParam.values().stream().map(TSType::toString).collect(Collectors.joining(", ")) + ">";
@@ -95,6 +134,7 @@ public interface TSType {
     record TSObject(
             Map<String, ObjectProperty> properties
     ) implements TSType {
+        @With
         public record ObjectProperty(
                 boolean readOnly,
                 TSType type
@@ -111,6 +151,11 @@ public interface TSType {
 
         public void addProperty(String key, TSType type, boolean readOnly) {
             properties.put(key, new ObjectProperty(readOnly, type));
+        }
+
+        @Override
+        public Uni<TSType> traverse() {
+            return c -> properties.values().forEach(i -> i.type().traverse().onItem(c));
         }
 
         @Override
@@ -135,6 +180,11 @@ public interface TSType {
     record TSArray(TSType element) implements TSType {
         public TSArray {
             Objects.requireNonNull(element);
+        }
+
+        @Override
+        public Uni<TSType> traverse() {
+            return element.traverse();
         }
 
         @Override
@@ -171,6 +221,14 @@ public interface TSType {
             Objects.requireNonNull(bound);
             Objects.requireNonNull(indicator);
             if (typeVar == null) typeVar = TSTypeVar.UNKNOWN;
+        }
+
+        @Override
+        public Uni<TSType> traverse() {
+            return c -> {
+                typeVar.traverse().onItem(c);
+                bound.traverse().onItem(c);
+            };
         }
 
         @Override

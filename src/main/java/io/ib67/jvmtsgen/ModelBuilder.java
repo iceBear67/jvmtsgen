@@ -3,31 +3,31 @@ package io.ib67.jvmtsgen;
 import io.ib67.jvmtsgen.pass.TransformerContext;
 import io.ib67.jvmtsgen.tsdef.*;
 import io.ib67.kiwi.routine.Uni;
+import lombok.Builder;
 
 import static io.ib67.jvmtsgen.TypeUtil.*;
 import static java.lang.Math.max;
 
-import java.lang.classfile.ClassModel;
-import java.lang.classfile.FieldModel;
-import java.lang.classfile.MethodModel;
-import java.lang.classfile.Signature;
-import java.lang.classfile.attribute.SignatureAttribute;
+import java.lang.classfile.*;
+import java.lang.classfile.attribute.*;
+import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.constant.ClassDesc;
 import java.lang.reflect.AccessFlag;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Builder
 public class ModelBuilder {
     protected final TypeScriptModel writer;
     protected final TransformerContext context;
-
-    public ModelBuilder(TypeScriptModel writer, TransformerContext context) {
-        this.writer = writer;
-        this.context = context;
-    }
+    protected final boolean nullableByDefault;
+    protected final boolean checkNull;
+    private final boolean generateSynthetic;
 
     private TSClassDecl generateClass(ClassModel model) {
         var simpleName = "L" + model.thisClass().asInternalName() + ";";
@@ -39,7 +39,11 @@ public class ModelBuilder {
             clazz.getType().typeParam().putAll(Uni.from(clazSign.typeParameters()::forEach)
                     .collect(Collectors.toMap(Signature.TypeParam::identifier, this::fromTypeParam)));
         }
-
+        if(model.flags().has(AccessFlag.INTERFACE)){
+            clazz.setKind(TSClassDecl.Kind.INTERFACE);
+        }else if(model.flags().has(AccessFlag.ENUM)){
+            clazz.setKind(TSClassDecl.Kind.ENUM);
+        }
         var cw = new TypeScriptModel(clazz);
         for (FieldModel field : model.fields()) {
             var flags = field.flags();
@@ -54,10 +58,15 @@ public class ModelBuilder {
             if (name.equals("<clinit>")) continue;
             if (name.equals("<init>")) {
                 var tm = fromMethodModel(method);
-                tm.setParent(cw.element);
                 cw.newConstructor(tm.getType().parameters());
             } else {
                 cw.addElement(fromMethodModel(method));
+            }
+        }
+        for (ClassElement classElement : model.elementList()) {
+            if(classElement instanceof NestMembersAttribute attribute){
+                for (ClassEntry nestMember : attribute.nestMembers()) { //todo nest members
+                }
             }
         }
         return clazz;
@@ -85,27 +94,93 @@ public class ModelBuilder {
         var params = sign == null
                 ? Uni.from(typeSym.parameterList()::forEach).map(this::fromClassDesc)
                 : Uni.from(sign.arguments()::forEach).map(this::fromSignature);
-        var paramMap = params.collect(Collectors.toMap(i -> "p" + counter.getAndIncrement(), Function.identity()));
         var typeParams = sign == null
                 ? Map.<String, TSType>of()
                 : Uni.from(sign.typeParameters()::forEach).collect(Collectors.toMap(Signature.TypeParam::identifier, this::fromTypeParam));
+        Map<String, TSType> paramMap;
+        var listOfParams = extractAnnotationsParams(model);
+        if (checkNull && !listOfParams.isEmpty()) {
+            paramMap = params.collect(Collectors.toMap(
+                    _ -> "p" + counter.get(),
+                    type -> annotateNullable(listOfParams.get(counter.getAndIncrement()), type)));
+        } else {
+            paramMap = params.collect(Collectors.toMap(i -> "p" + counter.getAndIncrement(), Function.identity()));
+        }
         var method = new TSMethod(
                 null,
                 model.methodName().stringValue(),
-                new TSType.TSFunction(false, returnType, paramMap, typeParams)); //todo async
+                new TSType.TSFunction(
+                        false,
+                        annotateNullable(extractAnnotationsSingle(model), returnType),
+                        paramMap, typeParams)); //todo async
         method.setModifiers(TSModifier.from(model.flags()));
         return method;
     }
 
     protected TSType typeFromField(FieldModel model) {
-        var sign = model.elementStream().filter(it -> it instanceof SignatureAttribute).findFirst().map(it -> ((SignatureAttribute) it).asTypeSignature()).orElse(null);
-        if (sign != null) {
-            return fromSignature(sign);
+        var ogType = model.elementStream()
+                .filter(it -> it instanceof SignatureAttribute)
+                .findFirst()
+                .map(it -> ((SignatureAttribute) it).asTypeSignature())
+                .map(this::fromSignature)
+                .orElseGet(() -> {
+                    var sym = model.fieldTypeSymbol();
+                    return new TSType.TSClass(
+                            "L" + (sym.packageName() + "." + sym.displayName()).replace(".", "/") + ";"
+                            , new HashMap<>());
+                });
+
+        return annotateNullable(extractAnnotationsSingle(model), ogType);
+    }
+
+    protected <E extends ClassFileElement> List<Annotation> extractAnnotationsSingle(CompoundElement<E> element) {
+        return element.elementStream().mapMulti((a, sink) -> {
+            switch (a) {
+                case RuntimeInvisibleAnnotationsAttribute riaa -> sink.accept(riaa.annotations());
+                case RuntimeVisibleAnnotationsAttribute riav -> sink.accept(riav.annotations());
+                case RuntimeVisibleTypeAnnotationsAttribute attr -> sink.accept(attr.annotations());
+                case RuntimeInvisibleTypeAnnotationsAttribute attr -> sink.accept(attr.annotations());
+                default -> {
+                }
+            }
+        }).flatMap(it -> ((List<Annotation>) it).stream()).toList();
+    }
+
+    protected List<List<Annotation>> extractAnnotationsParams(MethodModel element) {
+        List<List<Annotation>> listOfLists = null;
+        for (MethodElement methodElement : element.elementList()) {
+            var annotations = switch (methodElement) {
+                case RuntimeInvisibleParameterAnnotationsAttribute attr -> attr.parameterAnnotations();
+                case RuntimeVisibleParameterAnnotationsAttribute attr -> attr.parameterAnnotations();
+                default -> null;
+            };
+            if (annotations == null) continue;
+            if (listOfLists == null) {
+                listOfLists = annotations;
+                continue;
+            }
+            for (int i = 0; i < listOfLists.size(); i++) {
+                var combined = new ArrayList<>(listOfLists.get(i));
+                combined.addAll(annotations.get(i));
+                listOfLists.set(i, combined);
+            }
         }
-        var sym = model.fieldTypeSymbol();
-        return new TSType.TSClass(
-                "L" + (sym.packageName() + "." + sym.displayName()).replace(".", "/") + ";"
-                , new HashMap<>());
+        return listOfLists == null ? List.of() : listOfLists;
+    }
+
+    protected <E extends ClassFileElement> TSType annotateNullable(List<Annotation> annotations, TSType ogType) {
+        if (!checkNull) return ogType;
+        for (Annotation annotation : annotations) {
+            var desc = annotation.className().stringValue().toLowerCase();
+            if (desc.endsWith("nullable;")) {
+                return new TSType.TSUnion(ogType, TSType.TSPrimitive.NULL);
+            } else if (desc.endsWith("notnull;") || desc.endsWith("nonnull;")) {
+                return ogType;
+            }
+        }
+        if (nullableByDefault)
+            return new TSType.TSUnion(ogType, TSType.TSPrimitive.NULL);
+        return ogType;
     }
 
     protected TSType fromTypeParam(Signature.TypeParam param) {
@@ -169,18 +244,14 @@ public class ModelBuilder {
             case Signature.TypeArg.Unbounded _ -> TSType.TSPrimitive.UNKNOWN;
         };
     }
-    
-    protected String stubName(String internal){
-        return "java."+internal.replace("/", ".");
+
+    protected String stubName(String internal) {
+        return "java." + internal.replace("/", ".");
     }
 
     public void write(ClassModel model) {
+        if(model.flags().has(AccessFlag.SYNTHETIC) && !generateSynthetic) return;
         writeStub(model);
-    }
-
-    private void writeStub(ClassModel model) {
-        writer.newVariable("java", TSType.TSPrimitive.ANY, null);
-        
         var classDecl = generateClass(model);
         for (TSElement element : classDecl.elements()) {
             switch (element) {
@@ -207,5 +278,9 @@ public class ModelBuilder {
                 }
             }
         }
+    }
+
+    private void writeStub(ClassModel model) {
+        writer.newVariable("java", TSType.TSPrimitive.ANY, null);
     }
 }

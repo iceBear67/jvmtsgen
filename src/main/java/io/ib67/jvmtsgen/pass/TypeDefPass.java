@@ -25,7 +25,7 @@ public class TypeDefPass implements ElementPass {
         };
         var uni = traverse(element);
         var newElements = new ArrayList<TSElement>();
-        uni.filter(c -> transformInterface == c.isInterface())
+        uni.filter(c -> transformInterface == (c.getKind() == TSClassDecl.Kind.INTERFACE))
                 .map(c -> new TSTypeDecl(
                         c.getType().name(),
                         classToObjectLiteral(c, false),
@@ -58,7 +58,7 @@ public class TypeDefPass implements ElementPass {
                         obj.addProperty(
                                 method.getName(),
                                 method.getType(),
-                                method.getModifiers().contains(TSModifier.READ_ONLY)
+                                true
                         );
                 case TSFieldDecl field when (isStatic == field.getModifiers().contains(TSModifier.STATIC))
                         && intersectionAny(field.getModifiers())

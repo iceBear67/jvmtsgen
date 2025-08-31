@@ -66,7 +66,8 @@ public class HoistingPass implements ElementPass {
         return new TSMethod(
                 "new" + decl.getType().name(),
                 EnumSet.of(TSModifier.EXPORT),
-                new TSType.TSFunction(false, decl.getType(), constructor.getParameters(), typeParams),
+                new TSType.TSFunction(false, decl.getType().withTypeParam(typeParams),
+                        constructor.getParameters(), typeParams),
                 "return new " + context.stubNameOf(decl.getJavaInternalName())
                         + "(" + String.join(",", constructor.getParameters().keySet()) + ");"
         );

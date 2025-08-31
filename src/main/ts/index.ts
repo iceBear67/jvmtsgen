@@ -1,10 +1,10 @@
 let java: any
 
-export function newTest<G>(p0: String): Test<any> {
+export function newTest<G>(p0: String): Test<G> {
     return new java.Test(p0);
 }
 
-export function newTest<G>(): Test<any> {
+export function newTest<G>(): Test<G> {
     return new java.Test();
 }
 

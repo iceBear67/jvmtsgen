@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @ToString
@@ -24,5 +25,10 @@ public final class TSSourceFile extends TSElement.TSCompoundElement {
     @Override
     public List<TSElement> elements() {
         return elements;
+    }
+
+    @Override
+    public Set<TSModifier> getModifiers() {
+        return Set.of();
     }
 }

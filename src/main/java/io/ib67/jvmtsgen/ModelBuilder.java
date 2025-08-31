@@ -110,7 +110,6 @@ public class ModelBuilder {
                 null,
                 model.methodName().stringValue(),
                 new TSType.TSFunction(
-                        false,
                         annotateNullable(extractAnnotationsSingle(model), returnType),
                         paramMap, typeParams)); //todo async
         method.setModifiers(TSModifier.from(model.flags()));
@@ -252,32 +251,7 @@ public class ModelBuilder {
     public void write(ClassModel model) {
         if(model.flags().has(AccessFlag.SYNTHETIC) && !generateSynthetic) return;
         writeStub(model);
-        var classDecl = generateClass(model);
-        for (TSElement element : classDecl.elements()) {
-            switch (element) {
-                case TSMethod method
-                        when method.getCode() == null && method.getModifiers().contains(TSModifier.STATIC) -> {
-                    var code = stubName(model.thisClass().asInternalName()) + "." + method.getName() +
-                            "(" + String.join(", ", method.getType().parameters().keySet()) + ")";
-                    if (method.getModifiers().contains(TSModifier.ASYNC)
-                            || method.getType().returnType() != TSType.TSPrimitive.VOID) {
-                        code = "return " + code;
-                    }
-                    method.setCode(code);
-                }
-                case TSMethod method
-                        when method.getCode() == null -> {
-                    if (method.getModifiers().contains(TSModifier.ASYNC)
-                            || method.getType().returnType() != TSType.TSPrimitive.VOID) {
-                        method.setCode("return {} as " + method.getType().returnType());
-                    } else {
-                        method.setCode("");
-                    }
-                }
-                default -> {
-                }
-            }
-        }
+        generateClass(model);
     }
 
     private void writeStub(ClassModel model) {

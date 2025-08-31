@@ -29,7 +29,7 @@ public class TypeUtil {
         return !INVISIBLE.contains(flag);
     }
 
-    public static String toString(TSElement element, Set<TSModifier> flags) {
+    public static String getModifiers(TSElement element, Set<TSModifier> flags) {
         var str = new StringBuilder();
         var isClass = element instanceof TSClassDecl;
         var isField = element instanceof TSFieldDecl;
@@ -63,9 +63,7 @@ public class TypeUtil {
             hasAccessModifier = true;
         }
 
-        if (flags.contains(TSModifier.ASYNC)) {
-            if (!isMethod)
-                throw new UnsupportedOperationException("Cannot annotate async on " + element);
+        if (isMethod && ((TSMethod) element).isAsync()) {
             str.append("async ");
         }
         if (flags.contains(TSModifier.STATIC)) {

@@ -12,7 +12,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Getter
 public enum TSModifier {
-    ASYNC("async"),
     READ_ONLY("readonly"),
     EXPORT("export"),
     PUBLIC("public"),

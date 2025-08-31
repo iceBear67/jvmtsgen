@@ -11,6 +11,7 @@ import java.lang.classfile.ClassModel;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class AsisStrategy implements TransformerContext {
     protected final List<ElementPass> passes;
@@ -18,9 +19,11 @@ public class AsisStrategy implements TransformerContext {
     public AsisStrategy() {
         passes = List.of(
                 new TypeCanonicalizePass(List.of(PrimitiveCanonicalizer.INSTANCE)),
+                PromiseRewritePass.builder().thenables(Set.of("Ljava/util/concurrent/Future;")).build(),
                 RenamerPass.builder().asis(true).build(),
+                new PlaceholderCodePass(),
                 HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(false).build()
-//                TypeDefPass.builder().build()
+                ,TypeDefPass.builder().build()
         );
     }
 

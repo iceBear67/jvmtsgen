@@ -67,7 +67,6 @@ public interface TSType {
 
     @With
     record TSFunction(
-            boolean async,
             TSType returnType,
             Map<String, TSType> parameters,
             Map<String, TSType> typeParam
@@ -88,10 +87,7 @@ public interface TSType {
 
         @Override
         public String toString() {
-            var sb = new StringBuilder();
-            if (async) sb.append("async ");
-            sb.append(TypeUtil.typeParamString(typeParam)).append("(").append(paramSet(parameters)).append(") => ").append(returnType);
-            return sb.toString();
+            return TypeUtil.typeParamString(typeParam) + "(" + paramSet(parameters) + ") => " + returnType;
         }
     }
 

@@ -17,8 +17,7 @@ public class RenamerPass implements ElementPass {
     @Override
     public TSElement transform(TransformerContext context, TSElement element) {
         if (asis) {
-            traverse(element)
-                    .onItem(this::renameAsis);
+            traverse(element).onItem(this::renameAsis);
         } else throw new UnsupportedOperationException("Renamer does not support other methods yet");
         return element;
     }
@@ -49,19 +48,6 @@ public class RenamerPass implements ElementPass {
                     .withRight(renameTypeAsis(union.right()));
             case TSType.TSBounded bounded -> bounded.withBound(renameTypeAsis(bounded.bound()));
             default -> type;
-        };
-    }
-
-    protected Uni<TSElement> traverse(TSElement element) {
-        return c -> {
-            if (Objects.requireNonNull(element) instanceof TSElement.TSCompoundElement compoundElement) {
-                c.onValue(compoundElement);
-                for (TSElement tsElement : compoundElement.elements()) {
-                    traverse(tsElement).onItem(c);
-                }
-            } else {
-                c.onValue(element);
-            }
         };
     }
 

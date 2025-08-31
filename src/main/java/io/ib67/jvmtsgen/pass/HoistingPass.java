@@ -24,7 +24,7 @@ public class HoistingPass implements ElementPass {
             case TSElement.TSCompoundElement ele when !(ele instanceof TSClassDecl) -> ele;
             default -> new TSCompound(null, new ArrayList<>());
         };
-        traverse(element)
+        select(element)
                 .map(it -> createStaticFactory(context, it))
                 .onItem(t -> {
                     t.setParent(top);
@@ -51,10 +51,11 @@ public class HoistingPass implements ElementPass {
         var type = method.getType();
         Objects.requireNonNull(decl.getJavaInternalName());
         var code = context.stubNameOf(decl.getJavaInternalName()) + "." + method.getName() + "(" + String.join(",", type.parameters().keySet()) + ");";
-        if (type.async() || type.returnType() != TSType.TSPrimitive.VOID) {
+        if (method.isAsync() || type.returnType() != TSType.TSPrimitive.VOID) {
             code = "return " + code;
         }
         method.setCode(code);
+        method.getModifiers().add(TSModifier.EXPORT);
         method.getModifiers().remove(TSModifier.PUBLIC);
         method.getModifiers().remove(TSModifier.STATIC);
         method.getModifiers().remove(TSModifier.PRIVATE);
@@ -66,17 +67,17 @@ public class HoistingPass implements ElementPass {
         return new TSMethod(
                 "new" + decl.getType().name(),
                 EnumSet.of(TSModifier.EXPORT),
-                new TSType.TSFunction(false, decl.getType().withTypeParam(typeParams),
+                new TSType.TSFunction(decl.getType().withTypeParam(typeParams), // todo transform typeParams, <K,V> -> <V, TypeVar of V>
                         constructor.getParameters(), typeParams),
                 "return new " + context.stubNameOf(decl.getJavaInternalName())
-                        + "(" + String.join(",", constructor.getParameters().keySet()) + ");"
+                        + "(" + String.join(",", constructor.getParameters().keySet()) + ");",
+                false
         );
     }
 
-    public Uni<TSElement> traverse(TSElement element) {
-        return c -> {
-            switch (element) {
-                case TSElement.TSCompoundElement ele -> Uni.from(List.copyOf(ele.elements())::forEach).flatMap(this::traverse).onItem(c);
+    public Uni<TSElement> select(TSElement root) {
+        return c -> traverse(root).onItem(it -> {
+            switch (it){
                 case TSConstructor con
                         when hoistConstructor -> c.onValue(con);
                 case TSMethod meth
@@ -84,6 +85,6 @@ public class HoistingPass implements ElementPass {
                 default -> {
                 }
             }
-        };
+        });
     }
 }

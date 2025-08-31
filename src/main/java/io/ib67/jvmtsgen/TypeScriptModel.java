@@ -12,7 +12,7 @@ public class TypeScriptModel {
     }
 
     public TSMethod newMethod(String name, TSType returnType, Map<String, TSType> param) {
-        var method = new TSMethod(element, name, new TSType.TSFunction(false, returnType, param, null));
+        var method = new TSMethod(element, name, new TSType.TSFunction(returnType, param, null));
         element.elements().add(method);
         return method;
     }

@@ -79,20 +79,6 @@ public class TypeCanonicalizePass implements ElementPass {
         }
     }
 
-    protected Uni<TSElement> traverse(TSElement element) {
-        return c -> {
-            switch (element) {
-                case TSElement.TSCompoundElement e -> {
-                    c.onValue(e);
-                    for (TSElement tsElement : e.elements()) {
-                        traverse(tsElement).onItem(c);
-                    }
-                }
-                default -> c.onValue(element);
-            }
-        };
-    }
-
     public interface TypeCanonicalizer {
 
         default Map<String, TSType> transformTypeMap(TSElement element, Map<String, TSType> typeMap) {

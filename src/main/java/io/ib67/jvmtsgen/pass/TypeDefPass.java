@@ -23,18 +23,20 @@ public class TypeDefPass implements ElementPass {
             case TSElement.TSCompoundElement ele when !(ele instanceof TSClassDecl) -> ele;
             default -> new TSCompound(null, new ArrayList<>());
         };
-        var uni = traverse(element);
+        var uni = select(element);
         var newElements = new ArrayList<TSElement>();
         uni.filter(c -> transformInterface == (c.getKind() == TSClassDecl.Kind.INTERFACE))
                 .map(c -> new TSTypeDecl(
                         c.getType().name(),
                         classToObjectLiteral(c, false),
+                        EnumSet.of(TSModifier.EXPORT),
                         c.getType().typeParam()
                 )).peek(it -> it.setParent(top))
                 .onItem(newElements::add); // type Type = { instance members }
         uni.map(c -> new TSVarDecl( // const Type: { static members } = stub
                 c.getType().name(),
                 classToObjectLiteral(c, true),
+                EnumSet.of(TSModifier.EXPORT),
                 context.stubNameOf(c.getJavaInternalName())
         )).peek(it -> it.setParent(top)).onItem(newElements::add);
         uni.onItem(this::removeFromParent);
@@ -84,16 +86,9 @@ public class TypeDefPass implements ElementPass {
         return false;
     }
 
-    protected Uni<TSClassDecl> traverse(TSElement element) {
-        return c -> {
-            if (Objects.requireNonNull(element) instanceof TSElement.TSCompoundElement compoundElement) {
-                for (TSElement tsElement : List.copyOf(compoundElement.elements())) {
-                    traverse(tsElement).onItem(c);
-                }
-                if (compoundElement instanceof TSClassDecl tcd) {
-                    c.onValue(tcd);
-                }
-            }
-        };
+    protected Uni<TSClassDecl> select(TSElement element) {
+        return c -> traverse(element)
+                .filter(it -> it instanceof TSClassDecl)
+                .onItem(it -> c.onValue((TSClassDecl) it));
     }
 }

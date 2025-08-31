@@ -43,7 +43,9 @@ public class TypeScriptWriter {
     }
 
     private String writeTypeDecl(TSTypeDecl typeDecl) {
-        return (feature(WriterFeature.EMIT_DECLARATION_ONLY) ? "declare " : "") + "type " + typeDecl.getName()
+        return TypeUtil.getModifiers(typeDecl, typeDecl.getModifiers())
+                + (feature(WriterFeature.EMIT_DECLARATION_ONLY) ? "declare " : "")
+                + "type " + typeDecl.getName()
                 + (typeDecl.getTypeParam().isEmpty() ? "" : TypeUtil.typeParamString(typeDecl.getTypeParam()))
                 + " = " + typeDecl.getType();
     }
@@ -59,7 +61,7 @@ public class TypeScriptWriter {
         if (!fromInterface(varDecl) && feature(WriterFeature.EMIT_DECLARATION_ONLY)) {
             return "declare let " + varDecl.getName() + ": " + varDecl.getType();
         }
-        var r = "let " + varDecl.getName() + ": " + varDecl.getType();
+        var r = TypeUtil.getModifiers(varDecl, varDecl.getModifiers()) + "let " + varDecl.getName() + ": " + varDecl.getType();
         var defaultInitializer = varDecl.getDefaultInitializer();
         if (!fromInterface(varDecl) && defaultInitializer != null && !defaultInitializer.isEmpty()) {
             return r + " = " + defaultInitializer;
@@ -70,7 +72,7 @@ public class TypeScriptWriter {
     protected String writeMethod(TSMethod methodDecl) {
         var sb = new StringBuilder();
         if (!fromInterface(methodDecl) && !feature(WriterFeature.ALWAYS_INTERFACE)) {
-            sb.append(TypeUtil.toString(methodDecl, methodDecl.getModifiers()));
+            sb.append(TypeUtil.getModifiers(methodDecl, methodDecl.getModifiers()));
         }
         if (!(methodDecl.getParent() instanceof TSClassDecl)) { // top level function
             sb.append("function ");
@@ -82,11 +84,7 @@ public class TypeScriptWriter {
         }
         sb.append('(').append(TSType.paramSet(fn.parameters())).append(')');
         if (fn.returnType() != TSType.TSPrimitive.VOID) {
-            if(fn.returnType() instanceof TSType.TSClass clas){
-                sb.append(": ").append(clas.toRawSignature());
-            }else {
-                sb.append(": ").append(fn.returnType());
-            }
+            sb.append(": ").append(fn.returnType());
         }
 
         if (fromInterface(methodDecl)
@@ -102,7 +100,7 @@ public class TypeScriptWriter {
     protected String writeField(TSFieldDecl fieldDecl) {
         var sb = new StringBuilder();
         var varDecl = fieldDecl.getVariableDecl();
-        sb.append(TypeUtil.toString(fieldDecl, fieldDecl.getModifiers()))
+        sb.append(TypeUtil.getModifiers(fieldDecl, fieldDecl.getModifiers()))
                 .append(varDecl.getName()).append(": ").append(varDecl.getType());
         return sb.toString();
     }
@@ -111,14 +109,14 @@ public class TypeScriptWriter {
         if (fromInterface(constructor) || feature(WriterFeature.ALWAYS_INTERFACE)) {
             return ""; // constructors are omitted
         }
-        return TypeUtil.toString(constructor, constructor.getModifiers()) +
+        return TypeUtil.getModifiers(constructor, constructor.getModifiers()) +
                 " constructor(" + TSType.paramSet(constructor.getParameters()) + "){" + constructor.getBody() + "}";
     }
 
     protected String writeClassDecl(TSClassDecl classDecl) {
         var sb = new StringBuilder();
         var clazType = classDecl.getType();
-        sb.append(TypeUtil.toString(classDecl, classDecl.getModifiers()));
+        sb.append(TypeUtil.getModifiers(classDecl, classDecl.getModifiers()));
         if (feature(WriterFeature.EMIT_DECLARATION_ONLY)) {
             sb.append("declare ");
         }

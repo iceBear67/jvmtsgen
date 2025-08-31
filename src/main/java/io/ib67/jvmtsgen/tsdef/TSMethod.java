@@ -16,6 +16,7 @@ public class TSMethod extends TSElement {
     private Set<TSModifier> modifiers;
     private TSType.TSFunction type;
     private String code;
+    private boolean async;
 
     public TSMethod(TSElement parent, String name, TSType.TSFunction type) {
         super(parent);

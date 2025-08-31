@@ -1,13 +1,17 @@
 let java: any
-export class Test<G> {
-    public field: G
-    public readonly readonlyField: string | null
-    protected protectedField: number
-    private privateField: G
-    protected defaultAccessField: G
-    private privateField() {}
-    public genericMethod<T>(p0: T | null, p1: G): T {return {} as T}
-    public static factory<A>(): Test<A> | null {return java.Test.factory()}
+
+export function newTest<G>(p0: String): Test<any> {
+    return new java.Test(p0);
 }
-export function newTest<G>(p0: String): Test<G> {return new java.Test(p0);}
-export function newTest<G>(): Test<G> {return new java.Test();}
+
+export function newTest<G>(): Test<any> {
+    return new java.Test();
+}
+
+export type Test<G> = {
+    readonly readonlyField: string | null,
+    readonly awaitable: () => Promise<String>,
+    field: G,
+    readonly genericMethod: <T>(p0: T | null, p1: G) => T
+}
+export let Test: { readonly factory: <A>() => Test<A> | null } = java.Test

@@ -15,4 +15,4 @@ declare abstract class T{
     abstract functi();
     abstract field: string;
 }
-declare type a = {}
+export declare type a = {}

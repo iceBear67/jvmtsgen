@@ -8,6 +8,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public interface TSType {
+    interface ParameterizedTSType extends TSType {
+        Map<String, TSType> typeParam();
+    }
+
     @With
     record TSUnion(
             TSType left,
@@ -46,7 +50,7 @@ public interface TSType {
             TSType returnType,
             Map<String, TSType> parameters,
             Map<String, TSType> typeParam
-    ) implements TSType {
+    ) implements ParameterizedTSType {
         public TSFunction {
             Objects.requireNonNull(returnType);
             if (parameters == null) parameters = new HashMap<>();
@@ -74,28 +78,52 @@ public interface TSType {
     }
 
     @With
-    record TSClass(String name, Map<String, TSType> typeParameters) implements TSType {
+    record TSClass(String name, Map<String, TSType> typeParam) implements ParameterizedTSType {
         public TSClass {
             Objects.requireNonNull(name);
-            if (typeParameters == null) typeParameters = new HashMap<>();
+            if (typeParam == null) typeParam = new HashMap<>();
         }
 
         @Override
         public String toString() {
-            if (typeParameters.isEmpty()) return name;
-            return name + "<" + typeParameters.values().stream().map(TSType::toString).collect(Collectors.joining(", ")) + ">";
+            if (typeParam.isEmpty()) return name;
+            return name + "<" + typeParam.values().stream().map(TSType::toString).collect(Collectors.joining(", ")) + ">";
         }
     }
 
     @With
-    record TSObject(Map<String, TSType> properties) implements TSType {
+    record TSObject(
+            Map<String, ObjectProperty> properties
+    ) implements TSType {
+        public record ObjectProperty(
+                boolean readOnly,
+                TSType type
+        ) {
+        }
+
+        public TSObject() {
+            this(null);
+        }
+
         public TSObject {
             if (properties == null) properties = new HashMap<>();
         }
 
+        public void addProperty(String key, TSType type, boolean readOnly) {
+            properties.put(key, new ObjectProperty(readOnly, type));
+        }
+
         @Override
         public String toString() {
-            return "{" + paramSet(properties) + "}";
+            return "{" + properties.entrySet().stream()
+                    .map(this::toEntryString)
+                    .collect(Collectors.joining(", "))
+                    + "}";
+        }
+
+        private String toEntryString(Map.Entry<String, ObjectProperty> it) {
+            var prop = it.getValue();
+            return (prop.readOnly() ? "readonly " : "") + it.getKey() + ": " + prop.type;
         }
     }
 

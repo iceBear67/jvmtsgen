@@ -34,11 +34,18 @@ public class TypeScriptWriter {
             case TSMethod methodDecl -> writeMethod(methodDecl);
             case TSVarDecl varDecl -> writeVarDecl(varDecl);
             case TSSourceFile tsf -> writeSourceFile(tsf);
+            case TSTypeDecl typeDecl -> writeTypeDecl(typeDecl);
             case TSElement.TSCompoundElement otherCompound -> otherCompound.elements().stream()
                     .map(this::generate)
                     .collect(Collectors.joining("\n"));
             default -> throw new IllegalArgumentException("Unexpected value: " + element);
         };
+    }
+
+    private String writeTypeDecl(TSTypeDecl typeDecl) {
+        return (feature(WriterFeature.EMIT_DECLARATION_ONLY) ? "declare " : "") + "type " + typeDecl.getName()
+                + (typeDecl.getTypeParam().isEmpty() ? "" : TypeUtil.typeParamString(typeDecl.getTypeParam()))
+                + " = " + typeDecl.getType();
     }
 
     protected String writeSourceFile(TSSourceFile tsf) {
@@ -63,9 +70,9 @@ public class TypeScriptWriter {
     protected String writeMethod(TSMethod methodDecl) {
         var sb = new StringBuilder();
         if (!fromInterface(methodDecl) && !feature(WriterFeature.ALWAYS_INTERFACE)) {
-            sb.append(TypeUtil.toString(methodDecl, methodDecl.getAccess()));
+            sb.append(TypeUtil.toString(methodDecl, methodDecl.getModifiers()));
         }
-        if(!(methodDecl.getParent() instanceof TSClassDecl)){ // top level function
+        if (!(methodDecl.getParent() instanceof TSClassDecl)) { // top level function
             sb.append("function ");
         }
         sb.append(methodDecl.getName());
@@ -91,7 +98,7 @@ public class TypeScriptWriter {
     protected String writeField(TSFieldDecl fieldDecl) {
         var sb = new StringBuilder();
         var varDecl = fieldDecl.getVariableDecl();
-        sb.append(TypeUtil.toString(fieldDecl, fieldDecl.getAccessFlags())).append(" ")
+        sb.append(TypeUtil.toString(fieldDecl, fieldDecl.getModifiers()))
                 .append(varDecl.getName()).append(": ").append(varDecl.getType());
         return sb.toString();
     }
@@ -100,14 +107,14 @@ public class TypeScriptWriter {
         if (fromInterface(constructor) || feature(WriterFeature.ALWAYS_INTERFACE)) {
             return ""; // constructors are omitted
         }
-        return TypeUtil.toString(constructor, constructor.getAccess()) +
+        return TypeUtil.toString(constructor, constructor.getModifiers()) +
                 " constructor(" + TSType.paramSet(constructor.getParameters()) + "){" + constructor.getBody() + "}";
     }
 
     protected String writeClassDecl(TSClassDecl classDecl) {
         var sb = new StringBuilder();
         var clazType = classDecl.getType();
-        sb.append(TypeUtil.toString(classDecl, classDecl.getAccess()));
+        sb.append(TypeUtil.toString(classDecl, classDecl.getModifiers()));
         if (feature(WriterFeature.EMIT_DECLARATION_ONLY)) {
             sb.append("declare ");
         }
@@ -116,7 +123,7 @@ public class TypeScriptWriter {
         } else {
             sb.append("class ");
         }
-        sb.append(clazType.name()).append(TypeUtil.typeParamString(clazType.typeParameters())).append(" {\n");
+        sb.append(clazType.name()).append(TypeUtil.typeParamString(clazType.typeParam())).append(" {\n");
         for (TSElement element : classDecl.elements()) {
             sb.append(generate(element)).append('\n');
         }

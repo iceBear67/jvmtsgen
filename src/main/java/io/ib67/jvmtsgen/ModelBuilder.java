@@ -36,7 +36,7 @@ public class ModelBuilder {
         var sign = (SignatureAttribute) model.elementStream().filter(it -> it instanceof SignatureAttribute).findFirst().orElse(null);
         if (sign != null) {
             var clazSign = sign.asClassSignature();
-            clazz.getType().typeParameters().putAll(Uni.from(clazSign.typeParameters()::forEach)
+            clazz.getType().typeParam().putAll(Uni.from(clazSign.typeParameters()::forEach)
                     .collect(Collectors.toMap(Signature.TypeParam::identifier, this::fromTypeParam)));
         }
 
@@ -44,7 +44,8 @@ public class ModelBuilder {
         for (FieldModel field : model.fields()) {
             var flags = field.flags();
             if (hasInvisible(flags)) continue;
-            cw.newField(field.fieldName().stringValue(), typeFromField(field), null);
+            var f = cw.newField(field.fieldName().stringValue(), typeFromField(field), null);
+            f.setModifiers(TSModifier.from(flags));
         }
         for (MethodModel method : model.methods()) {
             var flags = method.flags();
@@ -92,7 +93,7 @@ public class ModelBuilder {
                 null,
                 model.methodName().stringValue(),
                 new TSType.TSFunction(false, returnType, paramMap, typeParams)); //todo async
-        method.setAccess(TSAccessFlag.from(model.flags()));
+        method.setModifiers(TSModifier.from(model.flags()));
         return method;
     }
 
@@ -184,10 +185,10 @@ public class ModelBuilder {
         for (TSElement element : classDecl.elements()) {
             switch (element) {
                 case TSMethod method
-                        when method.getCode() == null && method.getAccess().contains(TSAccessFlag.STATIC) -> {
+                        when method.getCode() == null && method.getModifiers().contains(TSModifier.STATIC) -> {
                     var code = stubName(model.thisClass().asInternalName()) + "." + method.getName() +
                             "(" + String.join(", ", method.getType().parameters().keySet()) + ")";
-                    if (method.getAccess().contains(TSAccessFlag.ASYNC)
+                    if (method.getModifiers().contains(TSModifier.ASYNC)
                             || method.getType().returnType() != TSType.TSPrimitive.VOID) {
                         code = "return " + code;
                     }
@@ -195,7 +196,7 @@ public class ModelBuilder {
                 }
                 case TSMethod method
                         when method.getCode() == null -> {
-                    if (method.getAccess().contains(TSAccessFlag.ASYNC)
+                    if (method.getModifiers().contains(TSModifier.ASYNC)
                             || method.getType().returnType() != TSType.TSPrimitive.VOID) {
                         method.setCode("return {} as " + method.getType().returnType());
                     } else {

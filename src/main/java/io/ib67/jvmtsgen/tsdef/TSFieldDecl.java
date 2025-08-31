@@ -5,7 +5,6 @@ import lombok.*;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -13,12 +12,12 @@ import java.util.stream.Collectors;
 @ToString
 public class TSFieldDecl extends TSElement{
     private TSVarDecl variableDecl;
-    private Set<TSAccessFlag> accessFlags;
+    private Set<TSModifier> modifiers;
 
     public TSFieldDecl(TSElement parent, TSVarDecl variableDecl) {
         super(parent);
         Objects.requireNonNull(variableDecl);
         this.variableDecl = variableDecl;
-        accessFlags = EnumSet.noneOf(TSAccessFlag.class);
+        modifiers = EnumSet.noneOf(TSModifier.class);
     }
 }

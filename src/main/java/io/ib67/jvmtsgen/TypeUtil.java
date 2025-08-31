@@ -29,7 +29,7 @@ public class TypeUtil {
         return !INVISIBLE.contains(flag);
     }
 
-    public static String toString(TSElement element, Set<TSAccessFlag> flags) {
+    public static String toString(TSElement element, Set<TSModifier> flags) {
         var str = new StringBuilder();
         var isClass = element instanceof TSClassDecl;
         var isField = element instanceof TSFieldDecl;
@@ -37,37 +37,52 @@ public class TypeUtil {
         var isConstructor = element instanceof TSConstructor;
         var isVarDecl = element instanceof TSVarDecl;
         var isWithinClass = element.getParent() instanceof TSClassDecl;
-        if (flags.contains(TSAccessFlag.EXPORT)) {
+        if (flags.contains(TSModifier.EXPORT)) {
             if (!isClass && !isVarDecl && (isMethod && isWithinClass))
                 throw new UnsupportedOperationException("Cannot annotate export on " + element);
             str.append("export ");
         }
-        if (flags.contains(TSAccessFlag.PUBLIC)) {
-            if (flags.contains(TSAccessFlag.PRIVATE) || (!isMethod && !isField && !isConstructor) || !isWithinClass)
+
+        var hasAccessModifier = false;
+        if (flags.contains(TSModifier.PUBLIC)) {
+            if ((!isMethod && !isField && !isConstructor) || !isWithinClass)
                 throw new UnsupportedOperationException("Cannot annotate public on " + element);
             str.append("public ");
+            hasAccessModifier = true;
         }
-        if (flags.contains(TSAccessFlag.PRIVATE)) {
-            if (isWithinClass || (!isMethod && !isField && !isConstructor))
+        if (flags.contains(TSModifier.PRIVATE)) {
+            if (!isWithinClass || (!isMethod && !isField && !isConstructor) || hasAccessModifier)
                 throw new UnsupportedOperationException("Cannot annotate private on " + element);
             str.append("private ");
+            hasAccessModifier = true;
         }
-        if (flags.contains(TSAccessFlag.ASYNC)) {
+        if(flags.contains(TSModifier.PROTECTED)){
+            if(!isWithinClass || (!isMethod && !isField && !isConstructor) || hasAccessModifier)
+                throw new UnsupportedOperationException("Cannot annotate protected on " + element);
+            str.append("protected ");
+            hasAccessModifier = true;
+        }
+
+        if (flags.contains(TSModifier.ASYNC)) {
             if (!isMethod)
                 throw new UnsupportedOperationException("Cannot annotate async on " + element);
             str.append("async ");
         }
-        if (flags.contains(TSAccessFlag.STATIC)) {
+        if (flags.contains(TSModifier.STATIC)) {
             if (!isMethod && !isField)
                 throw new UnsupportedOperationException("Cannot annotate static on " + element);
             str.append("static ");
         }
-        if (flags.contains(TSAccessFlag.READ_ONLY)) {
-            if (!isField)
+        if (flags.contains(TSModifier.READ_ONLY)) {
+            if(isField) {
+                str.append("readonly ");
+            } else if (isVarDecl) {
+                str.append("const ");
+            }else{
                 throw new UnsupportedOperationException("Cannot annotate readonly on " + element);
-            str.append("readonly ");
+            }
         }
-        if (flags.contains(TSAccessFlag.ABSTRACT)) {
+        if (flags.contains(TSModifier.ABSTRACT)) {
             if (!isWithinClass || (!isClass && !isMethod && !isField))
                 throw new UnsupportedOperationException("Cannot annotate abstract on "+element);
             str.append("abstract ");

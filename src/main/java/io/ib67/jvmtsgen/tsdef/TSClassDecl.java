@@ -1,19 +1,16 @@
 package io.ib67.jvmtsgen.tsdef;
 
-import io.ib67.jvmtsgen.TypeUtil;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter
 @ToString
 public class TSClassDecl extends TSElement.TSCompoundElement {
-    private Set<TSAccessFlag> access;
+    private Set<TSModifier> modifiers;
     private TSType.TSClass type;
     private List<TSElement> elements;
     private boolean isInterface;
@@ -23,7 +20,7 @@ public class TSClassDecl extends TSElement.TSCompoundElement {
         super(parent);
         type = new TSType.TSClass(name, typeArgs);
         elements = new ArrayList<>();
-        access = EnumSet.noneOf(TSAccessFlag.class);
+        modifiers = EnumSet.noneOf(TSModifier.class);
     }
 
     @Override

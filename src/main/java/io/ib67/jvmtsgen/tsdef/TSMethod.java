@@ -13,7 +13,7 @@ import java.util.*;
 @ToString
 public class TSMethod extends TSElement {
     private String name;
-    private Set<TSAccessFlag> access;
+    private Set<TSModifier> modifiers;
     private TSType.TSFunction type;
     private String code;
 
@@ -21,6 +21,6 @@ public class TSMethod extends TSElement {
         super(parent);
         this.name = Objects.requireNonNull(name);
         this.type = Objects.requireNonNull(type);
-        access = EnumSet.noneOf(TSAccessFlag.class);
+        modifiers = EnumSet.noneOf(TSModifier.class);
     }
 }

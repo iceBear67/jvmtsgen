@@ -17,7 +17,7 @@ public class TestModelBuilder {
     public void testSignature() {
 
         var strategy = new AsisStrategy();
-        var path = Path.of("/tmp/Test.class");
+        var path = Path.of("/home/icybear/IdeaProjects/jvmtsgen/Test.class");
         var cf = ClassFile.of();
         var model = cf.parse(path);
         var tsf = strategy.transform(model);

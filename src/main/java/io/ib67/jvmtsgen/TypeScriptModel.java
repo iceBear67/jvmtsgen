@@ -45,7 +45,7 @@ public class TypeScriptModel {
 
     public TSClassDecl newClass(String name, boolean export) {
         var clazz = new TSClassDecl(element, name, null);
-        if(export) clazz.getAccess().add(TSAccessFlag.EXPORT);
+        if(export) clazz.getModifiers().add(TSModifier.EXPORT);
         element.elements().add(clazz);
         return clazz;
     }

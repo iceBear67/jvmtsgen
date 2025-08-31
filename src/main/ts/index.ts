@@ -1,8 +1,16 @@
 let java: any
-export class Test<G> {
-    t: Test<String>
-    s: String
-    public genericMethod(): G {return {} as G}
+
+export function newTest<G>(p0: String): Test<any> {
+    return new java.Test(p0);
 }
-export function newTest<G>(): Test<any> {return new java.Test();}
-function genericMethodStatic<T,Z>(p0: Z, p1: String): T {return java.Test.genericMethodStatic(p0,p1);}
+
+export function newTest<G>(): Test<any> {
+    return new java.Test();
+}
+
+type Test<G> = {
+    readonly readonlyField: String,
+    field: G,
+    genericMethod: <T>(p0: T, p1: G) => T
+}
+let Test: { factory: <A>() => Test<A> } = java.Test

@@ -55,17 +55,17 @@ public class HoistingPass implements ElementPass {
             code = "return " + code;
         }
         method.setCode(code);
-        method.getAccess().remove(TSAccessFlag.PUBLIC);
-        method.getAccess().remove(TSAccessFlag.STATIC);
-        method.getAccess().remove(TSAccessFlag.PRIVATE);
+        method.getModifiers().remove(TSModifier.PUBLIC);
+        method.getModifiers().remove(TSModifier.STATIC);
+        method.getModifiers().remove(TSModifier.PRIVATE);
         return method;
     }
 
     private TSElement createStaticFactory(TransformerContext context, TSConstructor constructor, TSClassDecl decl) {
-        var typeParams = decl.getType().typeParameters();
+        var typeParams = decl.getType().typeParam();
         return new TSMethod(
                 "new" + decl.getType().name(),
-                EnumSet.of(TSAccessFlag.EXPORT),
+                EnumSet.of(TSModifier.EXPORT),
                 new TSType.TSFunction(false, decl.getType(), constructor.getParameters(), typeParams),
                 "return new " + context.stubNameOf(decl.getJavaInternalName())
                         + "(" + String.join(",", constructor.getParameters().keySet()) + ");"
@@ -79,7 +79,7 @@ public class HoistingPass implements ElementPass {
                 case TSConstructor con
                         when hoistConstructor -> c.onValue(con);
                 case TSMethod meth
-                        when hoistStaticMethod && meth.getAccess().contains(TSAccessFlag.STATIC) -> c.onValue(meth);
+                        when hoistStaticMethod && meth.getModifiers().contains(TSModifier.STATIC) -> c.onValue(meth);
                 default -> {
                 }
             }

@@ -2,10 +2,7 @@ package io.ib67.jvmtsgen.strategy;
 
 import io.ib67.jvmtsgen.ModelBuilder;
 import io.ib67.jvmtsgen.TypeScriptModel;
-import io.ib67.jvmtsgen.pass.ElementPass;
-import io.ib67.jvmtsgen.pass.HoistingPass;
-import io.ib67.jvmtsgen.pass.RenamerPass;
-import io.ib67.jvmtsgen.pass.TransformerContext;
+import io.ib67.jvmtsgen.pass.*;
 import io.ib67.jvmtsgen.tsdef.TSElement;
 import io.ib67.jvmtsgen.tsdef.TSSourceFile;
 
@@ -19,8 +16,9 @@ public class AsisStrategy implements TransformerContext {
 
     public AsisStrategy() {
         passes = List.of(
-                RenamerPass.builder().asis(true).build(),
-                HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(true).build()
+                RenamerPass.builder().asis(true).build()
+                ,HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(false).build()
+                ,TypeDefPass.builder().build()
         );
     }
 

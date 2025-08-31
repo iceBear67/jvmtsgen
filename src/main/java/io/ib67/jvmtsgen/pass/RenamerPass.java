@@ -39,7 +39,7 @@ public class RenamerPass implements ElementPass {
     private <T extends TSType> T renameTypeAsis(T type) {
         return (T) switch (type) {
             case TSType.TSClass claz -> claz.withName(fromDescriptor(claz.name()))
-                    .withTypeParameters(mapTypeMap(claz.typeParameters()));
+                    .withTypeParam(mapTypeMap(claz.typeParam()));
             case TSType.TSFunction tf ->
                     tf.withReturnType(renameTypeAsis(tf.returnType())).withParameters(mapTypeMap(tf.parameters()))
                             .withTypeParam(mapTypeMap(tf.typeParam()));

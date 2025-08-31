@@ -1,18 +1,12 @@
 declare let java: any
 
-declare class Test<G> {
-    t: Test<any>;
-    s: String;
+export function newTest<G>(p0: String): Test<G>
+export function newTest<G>(): Test<G>
 
-    constructor();
-
-    public genericMethodStatic<T, Z>(p0: Z, p1: String): T;
-
-    public genericMethod(): G;
+export declare type Test<G> = {
+    readonly readonlyField: string | null,
+    readonly awaitable: () => Promise<String>,
+    field: G,
+    readonly genericMethod: <T>(p0: T | null, p1: G) => T
 }
-
-declare abstract class T{
-    abstract functi();
-    abstract field: string;
-}
-export declare type a = {}
+export declare let Test: { readonly factory: <A>() => Test<A> | null }

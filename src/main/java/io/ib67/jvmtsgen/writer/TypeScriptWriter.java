@@ -59,7 +59,7 @@ public class TypeScriptWriter {
 
     protected String writeVarDecl(TSVarDecl varDecl) {
         if (!fromInterface(varDecl) && feature(WriterFeature.EMIT_DECLARATION_ONLY)) {
-            return "declare let " + varDecl.getName() + ": " + varDecl.getType();
+            return TypeUtil.getModifiers(varDecl, varDecl.getModifiers()) + "declare let " + varDecl.getName() + ": " + varDecl.getType();
         }
         var r = TypeUtil.getModifiers(varDecl, varDecl.getModifiers()) + "let " + varDecl.getName() + ": " + varDecl.getType();
         var defaultInitializer = varDecl.getDefaultInitializer();
@@ -122,7 +122,7 @@ public class TypeScriptWriter {
         }
         var typePrefix = switch (classDecl.getKind()) {
             case INTERFACE -> "interface ";
-            case ENUM -> "class "; //todo full enum support
+            case ENUM -> "class ";
             case CLASS -> feature(WriterFeature.ALWAYS_INTERFACE) ? "interface " : "class ";
         };
         sb.append(typePrefix);

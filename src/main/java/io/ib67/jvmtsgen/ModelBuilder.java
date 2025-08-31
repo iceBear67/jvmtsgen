@@ -6,7 +6,6 @@ import io.ib67.kiwi.routine.Uni;
 import lombok.Builder;
 
 import static io.ib67.jvmtsgen.TypeUtil.*;
-import static java.lang.Math.max;
 
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
@@ -111,7 +110,7 @@ public class ModelBuilder {
                 model.methodName().stringValue(),
                 new TSType.TSFunction(
                         annotateNullable(extractAnnotationsSingle(model), returnType),
-                        paramMap, typeParams)); //todo async
+                        paramMap, typeParams));
         method.setModifiers(TSModifier.from(model.flags()));
         return method;
     }
@@ -238,23 +237,19 @@ public class ModelBuilder {
                 }
                 case EXTENDS ->
                         new TSType.TSBounded(null, TSType.TSBounded.Indicator.EXTENDS, fromSignature(bounded.boundType()));
-                case SUPER -> new TSType.TSClass("Partial", Map.of(null, fromSignature(bounded.boundType())));
+                case SUPER -> new TSType.TSClass("Partial", Map.of("T", fromSignature(bounded.boundType())));
             };
             case Signature.TypeArg.Unbounded _ -> TSType.TSPrimitive.UNKNOWN;
         };
     }
 
-    protected String stubName(String internal) {
-        return "java." + internal.replace("/", ".");
-    }
-
     public void write(ClassModel model) {
         if(model.flags().has(AccessFlag.SYNTHETIC) && !generateSynthetic) return;
-        writeStub(model);
+        writeStub();
         generateClass(model);
     }
 
-    private void writeStub(ClassModel model) {
+    private void writeStub() {
         writer.newVariable("java", TSType.TSPrimitive.ANY, null);
     }
 }

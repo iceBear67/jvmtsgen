@@ -21,7 +21,7 @@ public class TestModelBuilder {
         var cf = ClassFile.of();
         var model = cf.parse(path);
         var tsf = strategy.transform(model);
-        System.out.println(new TypeScriptWriter().generate(tsf));
+        System.out.println(new TypeScriptWriter(WriterFeature.EMIT_DECLARATION_ONLY).generate(tsf));
     }
 
 }

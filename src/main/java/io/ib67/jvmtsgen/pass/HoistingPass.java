@@ -6,10 +6,8 @@ import io.ib67.kiwi.routine.Uni;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Builder
@@ -63,12 +61,14 @@ public class HoistingPass implements ElementPass {
     }
 
     private TSElement createStaticFactory(TransformerContext context, TSConstructor constructor, TSClassDecl decl) {
-        var typeParams = decl.getType().typeParam();
+        var methodTypeParam = decl.getType().typeParam().keySet()
+                .stream().map(s -> Map.entry(s, (TSType) new TSType.TSTypeVar(s)))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         return new TSMethod(
                 "new" + decl.getType().name(),
                 EnumSet.of(TSModifier.EXPORT),
-                new TSType.TSFunction(decl.getType().withTypeParam(typeParams), // todo transform typeParams, <K,V> -> <V, TypeVar of V>
-                        constructor.getParameters(), typeParams),
+                new TSType.TSFunction(decl.getType().withTypeParam(methodTypeParam), // transform typeParams, <K,V> -> <V, TypeVar of V>
+                        constructor.getParameters(), decl.getType().typeParam()),
                 "return new " + context.stubNameOf(decl.getJavaInternalName())
                         + "(" + String.join(",", constructor.getParameters().keySet()) + ");",
                 false

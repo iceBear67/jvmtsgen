@@ -13,7 +13,11 @@ public class TSClassDecl extends TSElement.TSCompoundElement {
     public enum Kind {
         CLASS, INTERFACE, ENUM
     }
+    public enum Flag {
+        SYNTHETIC, NEST_MEMBER
+    }
     private Set<TSModifier> modifiers;
+    private Set<Flag> classFlags;
     private TSType.TSClass type;
     private List<TSElement> elements;
     private Kind kind;

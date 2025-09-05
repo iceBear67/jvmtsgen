@@ -1,6 +1,5 @@
 package io.ib67.jvmtsgen;
 
-import io.ib67.jvmtsgen.pass.TransformerContext;
 import io.ib67.jvmtsgen.tsdef.*;
 import io.ib67.kiwi.routine.Uni;
 import lombok.Builder;
@@ -9,7 +8,6 @@ import static io.ib67.jvmtsgen.TypeUtil.*;
 
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
-import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.constant.ClassDesc;
 import java.lang.reflect.AccessFlag;
 import java.util.ArrayList;
@@ -22,15 +20,22 @@ import java.util.stream.Collectors;
 
 @Builder
 public class ModelBuilder {
-    protected final TypeScriptModel writer;
-    protected final TransformerContext context;
     protected final boolean nullableByDefault;
     protected final boolean checkNull;
     private final boolean generateSynthetic;
 
-    private TSClassDecl generateClass(ClassModel model) {
+    public void write(TypeScriptModel tsm, ClassModel model) {
+        if (model.flags().has(AccessFlag.SYNTHETIC) && !generateSynthetic) return;
+        tsm.newVariable("java", TSType.TSPrimitive.ANY, null);
+        tsm.addElement(writeClass(model));
+    }
+
+    private TSClassDecl writeClass(ClassModel model) {
         var simpleName = "L" + model.thisClass().asInternalName() + ";";
-        var clazz = writer.newClass(simpleName, model.flags().has(AccessFlag.PUBLIC));
+        var clazz = new TSClassDecl(null, simpleName, new HashMap<>());
+        if (model.flags().has(AccessFlag.PUBLIC)) {
+            clazz.getModifiers().add(TSModifier.EXPORT);
+        }
         clazz.setJavaInternalName(model.thisClass().asInternalName());
         var sign = (SignatureAttribute) model.elementStream().filter(it -> it instanceof SignatureAttribute).findFirst().orElse(null);
         if (sign != null) {
@@ -38,50 +43,42 @@ public class ModelBuilder {
             clazz.getType().typeParam().putAll(Uni.from(clazSign.typeParameters()::forEach)
                     .collect(Collectors.toMap(Signature.TypeParam::identifier, this::fromTypeParam)));
         }
-        if(model.flags().has(AccessFlag.INTERFACE)){
+        if (model.flags().has(AccessFlag.INTERFACE)) {
             clazz.setKind(TSClassDecl.Kind.INTERFACE);
-        }else if(model.flags().has(AccessFlag.ENUM)){
+        } else if (model.flags().has(AccessFlag.ENUM)) {
             clazz.setKind(TSClassDecl.Kind.ENUM);
         }
         var cw = new TypeScriptModel(clazz);
         for (FieldModel field : model.fields()) {
             var flags = field.flags();
             if (hasInvisible(flags)) continue;
-            var f = cw.newField(field.fieldName().stringValue(), typeFromField(field), null);
-            f.setModifiers(TSModifier.from(flags));
+            cw.addElement(writeField(field));
         }
         for (MethodModel method : model.methods()) {
             var flags = method.flags();
-            if (hasInvisible(flags)) continue;
             var name = method.methodName().stringValue();
+            if (hasInvisible(flags)) continue;
             if (name.equals("<clinit>")) continue;
             if (name.equals("<init>")) {
-                var tm = fromMethodModel(method);
+                var tm = writeMethod(method);
                 cw.newConstructor(tm.getType().parameters());
             } else {
-                cw.addElement(fromMethodModel(method));
-            }
-        }
-        for (ClassElement classElement : model.elementList()) {
-            if(classElement instanceof NestMembersAttribute attribute){
-                for (ClassEntry nestMember : attribute.nestMembers()) { //todo nest members
-                }
+                cw.addElement(writeMethod(method));
             }
         }
         return clazz;
     }
 
-    // VIJCSBFDZ
-    protected TSType.TSPrimitive primitiveFromDescriptor(char type) {
-        return switch (type) {
-            case 'V' -> TSType.TSPrimitive.VOID;
-            case 'I', 'B', 'C', 'D', 'F', 'J', 'S' -> TSType.TSPrimitive.NUMBER;
-            case 'Z' -> TSType.TSPrimitive.BOOLEAN;
-            default -> throw new IllegalStateException("Unexpected value: " + type);
-        };
+    public TSFieldDecl writeField(FieldModel field) {
+        return new TSFieldDecl(
+                new TSVarDecl(
+                        field.fieldName().stringValue(),
+                        typeFromField(field),
+                        null
+                ), TSModifier.from(field.flags()));
     }
 
-    protected TSMethod fromMethodModel(MethodModel model) {
+    public TSMethod writeMethod(MethodModel model) {
         var sign = model.elementStream()
                 .filter(it -> it instanceof SignatureAttribute)
                 .findFirst()
@@ -114,6 +111,16 @@ public class ModelBuilder {
         method.setModifiers(TSModifier.from(model.flags()));
         return method;
     }
+    // VIJCSBFDZ
+
+    protected TSType.TSPrimitive primitiveFromDescriptor(char type) {
+        return switch (type) {
+            case 'V' -> TSType.TSPrimitive.VOID;
+            case 'I', 'B', 'C', 'D', 'F', 'J', 'S' -> TSType.TSPrimitive.NUMBER;
+            case 'Z' -> TSType.TSPrimitive.BOOLEAN;
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        };
+    }
 
     protected TSType typeFromField(FieldModel model) {
         var ogType = model.elementStream()
@@ -132,16 +139,24 @@ public class ModelBuilder {
     }
 
     protected <E extends ClassFileElement> List<Annotation> extractAnnotationsSingle(CompoundElement<E> element) {
-        return element.elementStream().mapMulti((a, sink) -> {
-            switch (a) {
-                case RuntimeInvisibleAnnotationsAttribute riaa -> sink.accept(riaa.annotations());
-                case RuntimeVisibleAnnotationsAttribute riav -> sink.accept(riav.annotations());
-                case RuntimeVisibleTypeAnnotationsAttribute attr -> sink.accept(attr.annotations());
-                case RuntimeInvisibleTypeAnnotationsAttribute attr -> sink.accept(attr.annotations());
-                default -> {
-                }
-            }
-        }).flatMap(it -> ((List<Annotation>) it).stream()).toList();
+        return Uni.from(element.elementList()::forEach)
+                .<List>multiMap((a, sink) -> {
+                    switch (a) {
+                        case RuntimeInvisibleAnnotationsAttribute riaa -> sink.onValue(riaa.annotations());
+                        case RuntimeVisibleAnnotationsAttribute riav -> sink.onValue(riav.annotations());
+                        case RuntimeVisibleTypeAnnotationsAttribute attr -> sink.onValue(attr.annotations());
+                        case RuntimeInvisibleTypeAnnotationsAttribute attr -> sink.onValue(attr.annotations());
+                        default -> {
+                        }
+                    }
+                }).flatMap(it -> it::forEach)
+                .map(it -> (Object) it)
+                .map(it -> {
+                    if (it instanceof TypeAnnotation ta) {
+                        return ta.annotation();
+                    }
+                    return (Annotation) it;
+                }).toList();
     }
 
     protected List<List<Annotation>> extractAnnotationsParams(MethodModel element) {
@@ -188,7 +203,6 @@ public class ModelBuilder {
         if (classBound.isPresent()) {
             type = fromSignature(classBound.get());
             if (type instanceof TSType.TSBounded bounded) {
-                System.out.println(bounded.bound());
                 type = bounded.withTypeVar(typeVar);
             }
             return type;
@@ -215,12 +229,12 @@ public class ModelBuilder {
         if (desc.isArray()) {
             return new TSType.TSArray(fromClassDesc(desc.componentType()));
         }
-        return new TSType.TSClass(desc.displayName(), new HashMap<>());
+        return new TSType.TSClass(desc.descriptorString(), new HashMap<>());
     }
 
     protected TSType fromClassTypeSig(Signature.ClassTypeSig cts) {
-        if (cts.className().equals("java/lang/Object"))
-            return TSType.TSPrimitive.ANY;
+//        if (cts.className().equals("java/lang/Object"))
+//            return TSType.TSPrimitive.ANY;
         var counter = new AtomicInteger(0);
         return new TSType.TSClass("L" + cts.className() + ";", Uni.from(cts.typeArgs()::forEach)
                 .collect(Collectors.toMap(it -> "p" + counter.getAndIncrement(), this::resolveBound)));
@@ -229,27 +243,12 @@ public class ModelBuilder {
     protected TSType resolveBound(Signature.TypeArg typeArg) {
         return switch (typeArg) {
             case Signature.TypeArg.Bounded bounded -> switch (bounded.wildcardIndicator()) {
-                case NONE -> {
-                    if (bounded.boundType().signatureString().contains("java/lang/Object")) {
-                        yield TSType.TSPrimitive.ANY;
-                    }
-                    yield fromSignature(bounded.boundType());
-                }
+                case NONE -> fromSignature(bounded.boundType());
                 case EXTENDS ->
                         new TSType.TSBounded(null, TSType.TSBounded.Indicator.EXTENDS, fromSignature(bounded.boundType()));
                 case SUPER -> new TSType.TSClass("Partial", Map.of("T", fromSignature(bounded.boundType())));
             };
             case Signature.TypeArg.Unbounded _ -> TSType.TSPrimitive.UNKNOWN;
         };
-    }
-
-    public void write(ClassModel model) {
-        if(model.flags().has(AccessFlag.SYNTHETIC) && !generateSynthetic) return;
-        writeStub();
-        generateClass(model);
-    }
-
-    private void writeStub() {
-        writer.newVariable("java", TSType.TSPrimitive.ANY, null);
     }
 }

@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static java.lang.Math.max;
-
 public class TypeUtil {
     private static final EnumSet<AccessFlag> INVISIBLE = EnumSet.of(
             AccessFlag.BRIDGE,
@@ -76,7 +74,7 @@ public class TypeUtil {
                 str.append("readonly ");
             } else if (isVarDecl) {
                 str.append("const ");
-            }else{
+            }else if (!isMethod){ // ignore final methods
                 throw new UnsupportedOperationException("Cannot annotate readonly on " + element);
             }
         }

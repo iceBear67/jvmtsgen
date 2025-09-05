@@ -1,6 +1,7 @@
 package io.ib67.jvmtsgen.tsdef;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 
 import java.nio.file.Path;
@@ -12,9 +13,10 @@ import java.util.stream.Collectors;
 
 @ToString
 public final class TSSourceFile extends TSElement.TSCompoundElement {
-    @Getter
-    private final Path path;
     private final List<TSElement> elements;
+    @Getter
+    @Setter
+    private Path path;
 
     public TSSourceFile(Path path, List<TSElement> elements) {
         super(null);

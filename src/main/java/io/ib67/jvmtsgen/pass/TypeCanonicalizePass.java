@@ -35,12 +35,12 @@ public class TypeCanonicalizePass implements ElementPass {
     }
 
     protected void transformTypeDecl(TSTypeDecl typeDecl) {
-        transformTypeMap(typeDecl, typeDecl.getTypeParam());
+        typeDecl.setTypeParam(transformTypeMap(typeDecl, typeDecl.getTypeParam()));
         typeDecl.setType(transformType(typeDecl, typeDecl.getType()));
     }
 
     protected void transformContructor(TSConstructor tcon) {
-        transformTypeMap(tcon, tcon.getParameters());
+        tcon.setParameters(transformTypeMap(tcon, tcon.getParameters()));
     }
 
     protected void transformVarDecl(TSVarDecl varDecl) {
@@ -53,13 +53,17 @@ public class TypeCanonicalizePass implements ElementPass {
 
     protected void transformClass(TSClassDecl claz) {
         var type = claz.getType();
-        transformTypeMap(claz, type.typeParam());
+        claz.setType(type.withTypeParam(transformTypeMap(claz, type.typeParam())));
     }
 
     protected void transformMethod(TSMethod method) {
         var type = method.getType();
-        transformTypeMap(method, type.typeParam());
-        transformTypeMap(method, type.parameters());
+        var newType = new TSType.TSFunction(
+                transformType(method, type.returnType()),
+                transformTypeMap(method, type.parameters()),
+                transformTypeMap(method, type.typeParam())
+        );
+        method.setType(newType);
     }
 
     private TSType transformType(TSElement element, TSType type) {
@@ -69,14 +73,16 @@ public class TypeCanonicalizePass implements ElementPass {
         return type;
     }
 
-    protected void transformTypeMap(TSElement element, Map<String, TSType> typeMap) {
+    protected Map<String, TSType> transformTypeMap(TSElement element, Map<String, TSType> typeMap) {
+        var newMap = new HashMap<String, TSType>(typeMap.size());
         for (Map.Entry<String, TSType> entry : typeMap.entrySet()) {
             var type = entry.getValue();
             for (TypeCanonicalizer canonicalizer : canonicalizers) {
                 type = canonicalizer.transform(element, type);
             }
-            entry.setValue(type);
+            newMap.put(entry.getKey(), type);
         }
+        return newMap;
     }
 
     public interface TypeCanonicalizer {
@@ -102,17 +108,16 @@ public class TypeCanonicalizePass implements ElementPass {
         default <T extends TSType> T transform(TSElement element, T type) {
             return (T) transformFromBottom(element, switch (type) {
                 case TSType.TSArray tarr -> tarr.withElement(transform(element, tarr.element()));
-                case TSType.TSBounded bounded -> bounded.withTypeVar(transform(element, bounded.typeVar()))
-                        .withBound(transform(element, bounded.bound()));
+                case TSType.TSBounded bounded -> new TSType.TSBounded(
+                        transform(element, bounded.typeVar()),
+                        bounded.indicator(), transform(element, bounded.bound()));
                 case TSType.TSClass claz -> claz.withTypeParam(transformTypeMap(element, claz.typeParam()));
                 case TSType.TSObject to -> to.withProperties(transformProperties(element, to.properties()));
-                case TSType.TSUnion tu ->
-                        tu.withLeft(transform(element, tu.left())).withRight(transform(element, tu.right()));
-                case TSType.TSFunction tfn -> tfn.withTypeParam(transformTypeMap(element, tfn.typeParam()))
-                        .withReturnType(transform(element, tfn.returnType()))
-                        .withParameters(transformTypeMap(element, tfn.parameters()));
-                case TSType.TSIntersection in -> in.withLeft(transform(element, in.left()))
-                        .withRight(transform(element, in.right()));
+                case TSType.TSUnion tu -> new TSType.TSUnion(transform(element, tu.left()), transform(element, tu.right()));
+                case TSType.TSFunction tfn -> new TSType.TSFunction(transform(element, tfn.returnType()),
+                        transformTypeMap(element, tfn.parameters()), transformTypeMap(element, tfn.typeParam()));
+                case TSType.TSIntersection in ->
+                        new TSType.TSIntersection(transform(element, in.left()), transform(element, in.right()));
                 default -> type;
             });
         }

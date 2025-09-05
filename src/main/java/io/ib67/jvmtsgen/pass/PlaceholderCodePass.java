@@ -2,7 +2,8 @@ package io.ib67.jvmtsgen.pass;
 
 import io.ib67.jvmtsgen.tsdef.*;
 
-public class PlaceholderCodePass implements ElementPass {
+public enum PlaceholderCodePass implements ElementPass {
+    INSTANCE;
     @Override
     public TSElement transform(TransformerContext context, TSElement element) {
         traverse(element).onItem(e -> {

@@ -47,6 +47,7 @@ public class RenamerPass implements ElementPass {
             case TSType.TSUnion union -> union.withLeft(renameTypeAsis(union.left()))
                     .withRight(renameTypeAsis(union.right()));
             case TSType.TSBounded bounded -> bounded.withBound(renameTypeAsis(bounded.bound()));
+            case TSType.TSArray tarr -> tarr.withElement(renameTypeAsis(tarr.element()));
             default -> type;
         };
     }

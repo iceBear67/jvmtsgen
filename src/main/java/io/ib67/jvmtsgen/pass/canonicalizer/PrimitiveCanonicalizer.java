@@ -10,6 +10,8 @@ public enum PrimitiveCanonicalizer implements TypeCanonicalizePass.TypeCanonical
     public TSType transformFromBottom(TSElement element, TSType type) {
         if (type instanceof TSType.TSClass claz) {
             switch (claz.name()) {
+                case "Ljava/lang/Object;":
+                    return TSType.TSPrimitive.ANY;
                 case "Ljava/lang/String;":
                     return TSType.TSPrimitive.STRING;
                 case "Ljava/lang/Integer;", "Ljava/lang/Long;", "Ljava/lang/Double;", "Ljava/lang/Float;",

@@ -51,10 +51,7 @@ public class TypeScriptWriter {
     }
 
     protected String writeSourceFile(TSSourceFile tsf) {
-        return Uni.from(tsf.elements()::forEach)
-                .map(this::generate)
-                .reduce((a, b) -> a + '\n' + b)
-                .takeOne();
+        return tsf.elements().stream().map(this::generate).collect(Collectors.joining("\n"));
     }
 
     protected String writeVarDecl(TSVarDecl varDecl) {

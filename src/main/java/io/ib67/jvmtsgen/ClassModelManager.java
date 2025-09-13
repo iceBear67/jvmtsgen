@@ -14,11 +14,15 @@ public class ClassModelManager {
     protected final Map<String, ClassModel> classModels = new HashMap<>();
 
     public void addClass(ClassModel model) {
-        classModels.put(model.thisClass().asInternalName(), model);
+        classModels.put("L"+model.thisClass().asInternalName()+";", model);
     }
 
     public Optional<ClassModel> getClassModel(String className) {
-        return Optional.ofNullable(classModels.get(className));
+        return Optional.ofNullable(classModels.get("L"+className+";"));
+    }
+
+    public Optional<ClassModel> getByDescriptor(String descriptor) {
+        return Optional.ofNullable(classModels.get(descriptor));
     }
 
     public Uni<String> findAncestors(String name) {

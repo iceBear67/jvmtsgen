@@ -38,7 +38,7 @@ public class ModelBuilder {
             clazz.getModifiers().add(TSModifier.EXPORT);
         }
         clazz.setJavaInternalName(model.thisClass().asInternalName());
-        var sign = (SignatureAttribute) model.elementStream().filter(it -> it instanceof SignatureAttribute).findFirst().orElse(null);
+        var sign = model.findAttribute(Attributes.signature()).orElse(null);
         if (sign != null) {
             var clazSign = sign.asClassSignature();
             clazz.getType().typeParam().putAll(Uni.from(clazSign.typeParameters()::forEach)
@@ -80,10 +80,7 @@ public class ModelBuilder {
     }
 
     public TSMethod writeMethod(MethodModel model) {
-        var sign = model.elementStream()
-                .filter(it -> it instanceof SignatureAttribute)
-                .findFirst()
-                .map(it -> ((SignatureAttribute) it).asMethodSignature()).orElse(null);
+        var sign = model.findAttribute(Attributes.signature()).map(SignatureAttribute::asMethodSignature).orElse(null);
         var typeSym = model.methodTypeSymbol();
         TSType returnType = sign == null ? fromClassDesc(typeSym.returnType()) : fromSignature(sign.result());
         var params = sign == null
@@ -128,9 +125,9 @@ public class ModelBuilder {
         var parameterCounter = new AtomicInteger(0);
         var typeSym = model.methodTypeSymbol();
         // todo javadocannotation
-        var _methodParamNames = model.elementStream()
-                .filter(it -> it instanceof MethodParametersAttribute)
-                .flatMap(it -> ((MethodParametersAttribute) it).parameters().stream())
+        var _methodParamNames = model.findAttribute(Attributes.methodParameters())
+                .stream()
+                .flatMap(it->it.parameters().stream())
                 .map(it -> it.name().map(Utf8Entry::stringValue).orElse("p" + parameterCounter.getAndIncrement()))
                 .toList(); //todo check if this is working on other samples
         if (_methodParamNames.size() != typeSym.parameterCount()) {
@@ -140,10 +137,8 @@ public class ModelBuilder {
     }
 
     protected TSType typeFromField(FieldModel model) {
-        var ogType = model.elementStream()
-                .filter(it -> it instanceof SignatureAttribute)
-                .findFirst()
-                .map(it -> ((SignatureAttribute) it).asTypeSignature())
+        var ogType = model.findAttribute(Attributes.signature())
+                .map(SignatureAttribute::asTypeSignature)
                 .map(this::fromSignature)
                 .orElseGet(() -> {
                     var sym = model.fieldTypeSymbol();

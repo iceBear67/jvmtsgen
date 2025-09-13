@@ -23,19 +23,30 @@ import java.util.*;
 
 @Log4j2
 public class AsisStrategy implements TransformerContext {
-    protected final TSourceTree.Directory root = new TSourceTree.Directory(null, new HashMap<>());
-    protected final List<ElementPass> passes;
-    protected final TypeScriptWriter writer = new TypeScriptWriter();
     @Getter
     protected final ClassModelManager classModels = new ClassModelManager();
+    protected final TSourceTree.Directory root = new TSourceTree.Directory(null, new HashMap<>());
+    protected final TypeScriptWriter writer = new TypeScriptWriter();
+    @Getter
+    protected final ModelBuilder modelBuilder;
+    protected final List<ElementPass> passes;
 
     public AsisStrategy() {
+        modelBuilder = ModelBuilder.builder()
+                .generateSynthetic(true)
+                .nullableByDefault(false)
+                .checkNull(true)
+                .build();
         passes = List.of(
-                new TypeCanonicalizePass(List.of(PrimitiveCanonicalizer.INSTANCE, GenericTypeCanonicalizer.INSTANCE, FunctionTypeCanonicalizer.INSTANCE))
-                ,PromiseRewritePass.builder().thenables(Set.of("Ljava/util/concurrent/Future;")).build()
-                ,RenamerPass.builder().asis(true).build()
-                ,PlaceholderCodePass.INSTANCE
-                ,HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(false).build()
+                new TypeCanonicalizePass(List.of(
+                        PrimitiveCanonicalizer.INSTANCE
+                        , GenericTypeCanonicalizer.INSTANCE
+                        , new FunctionTypeCanonicalizer(true)
+                ))
+                , PromiseRewritePass.builder().thenables(Set.of("Ljava/util/concurrent/Future;")).build()
+                , RenamerPass.builder().asis(true).build()
+                , PlaceholderCodePass.INSTANCE
+                , HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(false).build()
 //                ,VisibilityFilterPass.INSTANCE
 //                , TypeDefPass.builder().build()
         );
@@ -57,13 +68,13 @@ public class AsisStrategy implements TransformerContext {
             });
             root = newRoot;
         }
-        root.traverse().onItem(it->{
-            if(!(it instanceof TSourceTree.File(_, var content))) return;
+        root.traverse().onItem(it -> {
+            if (!(it instanceof TSourceTree.File(_, var content))) return;
             Result.runAny(() -> {
                 var file = path.resolve(content.getPath());
-                if(Files.notExists(file.getParent())) Files.createDirectories(file.getParent());
+                if (Files.notExists(file.getParent())) Files.createDirectories(file.getParent());
                 var output = writer.generate(content);
-                if(output == null) {
+                if (output == null) {
                     log.error("Output of {} is null", file);
                     return;
                 }
@@ -80,7 +91,7 @@ public class AsisStrategy implements TransformerContext {
         classModels.addClass(cm);
         var start = System.currentTimeMillis();
         var tsf = transform(cm);
-        tsf.setPath(Path.of(cm.thisClass().asInternalName()+".ts"));
+        tsf.setPath(Path.of(cm.thisClass().asInternalName() + ".ts"));
         join(tsf, root);
         log.info("Processed class {} ({}ms)", cm.thisClass().asInternalName(), System.currentTimeMillis() - start);
     }
@@ -95,11 +106,6 @@ public class AsisStrategy implements TransformerContext {
 
     protected TSSourceFile transform(ClassModel model) {
         var tsf = new TSSourceFile(null, new ArrayList<>());
-        var modelBuilder = ModelBuilder.builder()
-                .generateSynthetic(true)
-                .nullableByDefault(false)
-                .checkNull(true)
-                .build();
         modelBuilder.write(new TypeScriptModel(tsf), model);
         return tsf;
     }

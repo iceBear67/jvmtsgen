@@ -1,4 +1,5 @@
 import io.ib67.jvmtsgen.strategy.AsisStrategy;
+import io.ib67.kiwi.routine.Result;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 
@@ -10,19 +11,20 @@ import java.util.zip.ZipFile;
 public class TestModelBuilder {
     @Test
     @SneakyThrows
-    public void readSingle(){
+    public void readSingle() {
         var strategy = new AsisStrategy();
         var cf = ClassFile.of();
         var outDir = Path.of("_out");
         if (Files.notExists(outDir)) Files.createDirectory(outDir);
         var testDatas = Path.of("test-data");
-        try(var l = Files.list(testDatas)){
-            l.filter(it->it.endsWith(".class") && Files.isRegularFile(it))
-                    .map(cf::parse)
+        try (var l = Files.walk(testDatas)) {
+            l.filter(it -> it.toAbsolutePath().toString().endsWith("class"))
+                    .map(i -> Result.fromAny(() -> cf.parse(i)).orElseThrow())
                     .forEach(strategy::scan);
         }
         strategy.output(outDir);
     }
+
     @Test
     @SneakyThrows
     public void readJar() {

@@ -15,7 +15,12 @@ public class TestModelBuilder {
         var cf = ClassFile.of();
         var outDir = Path.of("_out");
         if (Files.notExists(outDir)) Files.createDirectory(outDir);
-        strategy.scan(cf.parse(Path.of("Test.class")));
+        var testDatas = Path.of("test-data");
+        try(var l = Files.list(testDatas)){
+            l.filter(it->it.endsWith(".class") && Files.isRegularFile(it))
+                    .map(cf::parse)
+                    .forEach(strategy::scan);
+        }
         strategy.output(outDir);
     }
     @Test

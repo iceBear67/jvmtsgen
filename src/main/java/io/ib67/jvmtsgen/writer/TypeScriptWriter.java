@@ -2,7 +2,6 @@ package io.ib67.jvmtsgen.writer;
 
 import io.ib67.jvmtsgen.TypeUtil;
 import io.ib67.jvmtsgen.tsdef.*;
-import io.ib67.kiwi.routine.Uni;
 
 import java.util.Collections;
 import java.util.EnumSet;
@@ -79,7 +78,7 @@ public class TypeScriptWriter {
         if (!fn.typeParam().isEmpty()) {
             sb.append(TypeUtil.typeParamString(fn.typeParam()));
         }
-        sb.append('(').append(TSType.paramSet(fn.parameters())).append(')');
+        sb.append('(').append(TypeUtil.paramSetString(fn.parameters())).append(')');
         if (fn.returnType() != TSType.TSPrimitive.VOID) {
             sb.append(": ").append(fn.returnType());
         }
@@ -107,7 +106,7 @@ public class TypeScriptWriter {
             return ""; // constructors are omitted
         }
         return TypeUtil.getModifiers(constructor, constructor.getModifiers()) +
-                " constructor(" + TSType.paramSet(constructor.getParameters()) + "){" + constructor.getBody() + "}";
+                " constructor(" + TypeUtil.paramSetString(constructor.getParameters()) + "){" + constructor.getBody() + "}";
     }
 
     protected String writeClassDecl(TSClassDecl classDecl) {

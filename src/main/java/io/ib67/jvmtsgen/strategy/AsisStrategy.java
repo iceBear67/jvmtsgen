@@ -1,5 +1,6 @@
 package io.ib67.jvmtsgen.strategy;
 
+import io.ib67.jvmtsgen.ClassModelManager;
 import io.ib67.jvmtsgen.ModelBuilder;
 import io.ib67.jvmtsgen.TSourceTree;
 import io.ib67.jvmtsgen.TypeScriptModel;
@@ -11,22 +12,22 @@ import io.ib67.jvmtsgen.tsdef.TSElement;
 import io.ib67.jvmtsgen.tsdef.TSSourceFile;
 import io.ib67.jvmtsgen.writer.TypeScriptWriter;
 import io.ib67.kiwi.routine.Result;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 
 import java.lang.classfile.ClassModel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Log4j2
 public class AsisStrategy implements TransformerContext {
     protected final TSourceTree.Directory root = new TSourceTree.Directory(null, new HashMap<>());
     protected final List<ElementPass> passes;
     protected final TypeScriptWriter writer = new TypeScriptWriter();
+    @Getter
+    protected final ClassModelManager classModels = new ClassModelManager();
 
     public AsisStrategy() {
         passes = List.of(
@@ -76,6 +77,7 @@ public class AsisStrategy implements TransformerContext {
     }
 
     public void scan(ClassModel cm) {
+        classModels.addClass(cm);
         var start = System.currentTimeMillis();
         var tsf = transform(cm);
         tsf.setPath(Path.of(cm.thisClass().asInternalName()+".ts"));

@@ -95,4 +95,9 @@ public class TypeUtil {
                 '>';
     }
 
+    public static String paramSetString(Map<String, TSType> types) {
+        return types.entrySet().stream()
+                .map(it -> it.getKey() + ": " + it.getValue())
+                .collect(Collectors.joining(", "));
+    }
 }

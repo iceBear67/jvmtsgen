@@ -87,7 +87,7 @@ public interface TSType {
 
         @Override
         public String toString() {
-            return TypeUtil.typeParamString(typeParam) + "(" + paramSet(parameters) + ") => " + returnType;
+            return TypeUtil.typeParamString(typeParam) + "(" + TypeUtil.paramSetString(parameters) + ") => " + returnType;
         }
     }
 
@@ -255,9 +255,4 @@ public interface TSType {
     }
 
 
-    static String paramSet(Map<String, TSType> types) {
-        return types.entrySet().stream()
-                .map(it -> it.getKey() + ": " + it.getValue())
-                .collect(Collectors.joining(", "));
-    }
 }

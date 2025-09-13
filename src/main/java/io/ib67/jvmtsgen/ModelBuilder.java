@@ -8,6 +8,7 @@ import static io.ib67.jvmtsgen.TypeUtil.*;
 
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
+import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.constant.ClassDesc;
 import java.lang.reflect.AccessFlag;
 import java.util.ArrayList;
@@ -85,8 +86,6 @@ public class ModelBuilder {
                 .map(it -> ((SignatureAttribute) it).asMethodSignature()).orElse(null);
         var typeSym = model.methodTypeSymbol();
         TSType returnType = sign == null ? fromClassDesc(typeSym.returnType()) : fromSignature(sign.result());
-        // todo name mapping
-        var counter = new AtomicInteger(0);
         var params = sign == null
                 ? Uni.from(typeSym.parameterList()::forEach).map(this::fromClassDesc)
                 : Uni.from(sign.arguments()::forEach).map(this::fromSignature);
@@ -95,12 +94,15 @@ public class ModelBuilder {
                 : Uni.from(sign.typeParameters()::forEach).collect(Collectors.toMap(Signature.TypeParam::identifier, this::fromTypeParam));
         Map<String, TSType> paramMap;
         var listOfParams = extractAnnotationsParams(model);
-        if (checkNull && !listOfParams.isEmpty()) {
+        var methodParamNames = findParameterNames(model);
+        var parameterCounter = new AtomicInteger(0);
+        if (checkNull && !listOfParams.isEmpty()) { // has annotation parameters
             paramMap = params.collect(Collectors.toMap(
-                    _ -> "p" + counter.get(),
-                    type -> annotateNullable(listOfParams.get(counter.getAndIncrement()), type)));
+                    _ -> methodParamNames.get(parameterCounter.get()),
+                    type -> annotateNullable(listOfParams.get(parameterCounter.getAndIncrement()), type)));
         } else {
-            paramMap = params.collect(Collectors.toMap(i -> "p" + counter.getAndIncrement(), Function.identity()));
+            paramMap = params.collect(Collectors.toMap(
+                    _ -> methodParamNames.get(parameterCounter.getAndIncrement()), Function.identity()));
         }
         var method = new TSMethod(
                 null,
@@ -120,6 +122,21 @@ public class ModelBuilder {
             case 'Z' -> TSType.TSPrimitive.BOOLEAN;
             default -> throw new IllegalStateException("Unexpected value: " + type);
         };
+    }
+
+    protected List<String> findParameterNames(MethodModel model) {
+        var parameterCounter = new AtomicInteger(0);
+        var typeSym = model.methodTypeSymbol();
+        // todo javadocannotation
+        var _methodParamNames = model.elementStream()
+                .filter(it -> it instanceof MethodParametersAttribute)
+                .flatMap(it -> ((MethodParametersAttribute) it).parameters().stream())
+                .map(it -> it.name().map(Utf8Entry::stringValue).orElse("p" + parameterCounter.getAndIncrement()))
+                .toList(); //todo check if this is working on other samples
+        if (_methodParamNames.size() != typeSym.parameterCount()) {
+            _methodParamNames = Uni.infiniteAscendingNum().limit(typeSym.parameterCount()).map(it -> "p" + it).toList();
+        }
+        return _methodParamNames;
     }
 
     protected TSType typeFromField(FieldModel model) {

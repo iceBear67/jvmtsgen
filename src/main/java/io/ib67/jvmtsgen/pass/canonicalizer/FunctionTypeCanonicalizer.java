@@ -39,9 +39,6 @@ public class FunctionTypeCanonicalizer implements TypeCanonicalizePass.TypeCanon
                 break;
         }
         if (!expandUserFunctionalInterface) return type;
-        if(claz.name().contains("TestPredicate")){
-            System.out.println(1);
-        }
         var _clazMod = context.getClassModels().getByDescriptor(claz.name());
         if (_clazMod.isEmpty()) return type;
         var clasMod = _clazMod.get();

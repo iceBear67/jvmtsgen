@@ -8,6 +8,8 @@ import io.ib67.jvmtsgen.pass.*;
 import io.ib67.jvmtsgen.pass.canonicalizer.FunctionTypeCanonicalizer;
 import io.ib67.jvmtsgen.pass.canonicalizer.GenericTypeCanonicalizer;
 import io.ib67.jvmtsgen.pass.canonicalizer.PrimitiveCanonicalizer;
+import io.ib67.jvmtsgen.pass.nameresolver.OverloadMergePass;
+import io.ib67.jvmtsgen.pass.nameresolver.OverloadRemoverPass;
 import io.ib67.jvmtsgen.tsdef.TSElement;
 import io.ib67.jvmtsgen.tsdef.TSSourceFile;
 import io.ib67.jvmtsgen.writer.TypeScriptWriter;
@@ -47,6 +49,8 @@ public class AsisStrategy implements TransformerContext {
                 , RenamerPass.builder().asis(true).build()
                 , PlaceholderCodePass.INSTANCE
                 , HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(false).build()
+                , new OverloadMergePass()
+                , OverloadRemoverPass.INSTANCE
 //                ,VisibilityFilterPass.INSTANCE
 //                , TypeDefPass.builder().build()
         );

@@ -12,6 +12,8 @@ import java.util.Objects;
 public interface ElementPass {
     TSElement transform(TransformerContext context, TSElement element);
 
+    default void onPassEnd(){}
+
     default Uni<TSElement> traverse(TSElement root) {
         return c -> {
             c.onValue(root);

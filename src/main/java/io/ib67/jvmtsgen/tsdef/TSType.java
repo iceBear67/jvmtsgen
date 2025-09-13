@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.With;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public interface TSType {
@@ -218,7 +219,7 @@ public interface TSType {
         public TSBounded {
             Objects.requireNonNull(bound);
             Objects.requireNonNull(indicator);
-            if (typeVar == null) typeVar = TSTypeVar.UNKNOWN;
+            if(typeVar == null) typeVar = TSTypeVar.UNKNOWN;
         }
 
         @Override
@@ -231,6 +232,7 @@ public interface TSType {
 
         @Override
         public String toString() {
+            if(typeVar == TSTypeVar.UNKNOWN) return bound.toString();
             return typeVar + " extends " + bound; //todo fix
         }
     }

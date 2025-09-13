@@ -51,8 +51,8 @@ public class AsisStrategy implements TransformerContext {
                 , HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(false).build()
                 , new OverloadMergePass()
                 , OverloadRemoverPass.INSTANCE
-//                ,VisibilityFilterPass.INSTANCE
-//                , TypeDefPass.builder().build()
+                , VisibilityFilterPass.INSTANCE
+                , TypeDefPass.builder().build()
         );
     }
 
@@ -70,6 +70,7 @@ public class AsisStrategy implements TransformerContext {
                     } else unknownPackageFile.elements().add(result);
                 }
             });
+            pass.onPassEnd();
             root = newRoot;
         }
         root.traverse().onItem(it -> {
@@ -112,6 +113,11 @@ public class AsisStrategy implements TransformerContext {
         var tsf = new TSSourceFile(null, new ArrayList<>());
         modelBuilder.write(new TypeScriptModel(tsf), model);
         return tsf;
+    }
+
+    @Override
+    public TSourceTree getSourceTree() {
+        return root;
     }
 
     @Override

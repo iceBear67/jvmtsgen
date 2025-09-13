@@ -37,7 +37,9 @@ public interface TSType {
 
         @Override
         public String toString() {
-            return left + " | " + right;
+            var _left = (left instanceof TSFunction) ? "("+ left +")" : left.toString();
+            var _right = (right instanceof TSFunction) ? "("+ right +")" : right.toString();
+            return _left + " | " + _right;
         }
     }
 

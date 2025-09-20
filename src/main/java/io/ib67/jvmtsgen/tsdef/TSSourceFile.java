@@ -5,10 +5,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @ToString
@@ -17,11 +14,16 @@ public final class TSSourceFile extends TSElement.TSCompoundElement {
     @Getter
     @Setter
     private Path path;
+    // simplename -> path
+    @Getter
+    @Setter
+    private Map<String, String> importTable;
 
     public TSSourceFile(Path path, List<TSElement> elements) {
         super(null);
         this.path = path;
         this.elements = elements;
+        this.importTable = new HashMap<>();
     }
 
     @Override

@@ -14,6 +14,7 @@ import java.lang.classfile.Attributes;
 import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.reflect.AccessFlag;
 import java.util.*;
+import java.util.function.Function;
 
 @RequiredArgsConstructor
 public class FunctionTypeCanonicalizer implements TypeCanonicalizePass.TypeCanonicalizer {
@@ -53,6 +54,7 @@ public class FunctionTypeCanonicalizer implements TypeCanonicalizePass.TypeCanon
         var nonDefaultMethod = nonDefaultMethods.getFirst();
         // 1. typevar -> (order -> actual type)
         // 2. expand
+        //todo bug for randomhelper, the type is lost
         var typeMap = new HashMap<String, TSType>();
         clasMod.findAttribute(Attributes.signature()).map(SignatureAttribute::asClassSignature)
                 .ifPresent(classSignature -> {
@@ -64,13 +66,25 @@ public class FunctionTypeCanonicalizer implements TypeCanonicalizePass.TypeCanon
                 });
 
         var fnType = context.getModelBuilder().writeMethod(nonDefaultMethod).getType();
-        if(!typeMap.isEmpty()){
+        if (!typeMap.isEmpty()) {
             for (Map.Entry<String, TSType> entry : fnType.parameters().entrySet()) {
-                if(entry.getValue() instanceof TSType.TSTypeVar(var id)){
-                    entry.setValue(typeMap.get(id));
-                }
+                entry.setValue(new TypeVarHelper(tv ->
+                        typeMap.get(tv.identifier())).transform(context, element, entry.getValue()));
             }
         }
         return fnType;
+    }
+
+    @RequiredArgsConstructor
+    static class TypeVarHelper implements TypeCanonicalizePass.TypeCanonicalizer {
+        private final Function<TSType.TSTypeVar, TSType> function;
+
+        @Override
+        public TSType transformFromBottom(TransformerContext context, TSElement element, TSType type) {
+            if (type instanceof TSType.TSTypeVar tv) {
+                return function.apply(tv);
+            }
+            return type;
+        }
     }
 }

@@ -3,10 +3,7 @@ package io.ib67.jvmtsgen.writer;
 import io.ib67.jvmtsgen.TypeUtil;
 import io.ib67.jvmtsgen.tsdef.*;
 
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class TypeScriptWriter {
@@ -50,7 +47,14 @@ public class TypeScriptWriter {
     }
 
     protected String writeSourceFile(TSSourceFile tsf) {
-        return tsf.elements().stream().map(this::generate).collect(Collectors.joining("\n"));
+        var sb = new StringBuilder();
+        var imports = tsf.getImportTable().entrySet().stream()
+                .collect(Collectors.groupingBy(Map.Entry::getValue,
+                        Collectors.mapping(Map.Entry::getKey, Collectors.toList())));
+        imports.forEach((k, v) ->
+                sb.append("import {").append(String.join(", ", v)).append("} from '").append(k).append("';\n"));
+        sb.append(tsf.elements().stream().map(this::generate).collect(Collectors.joining("\n")));
+        return sb.toString();
     }
 
     protected String writeVarDecl(TSVarDecl varDecl) {

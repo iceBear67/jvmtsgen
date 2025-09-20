@@ -51,8 +51,8 @@ public class AsisStrategy implements TransformerContext {
                 , HoistingPass.builder().hoistConstructor(true).hoistStaticMethod(false).build()
                 , new OverloadMergePass()
                 , OverloadRemoverPass.INSTANCE
-                , VisibilityFilterPass.INSTANCE
-                , TypeDefPass.builder().build()
+//                , VisibilityFilterPass.INSTANCE
+//                , TypeDefPass.builder().build()
         );
     }
 
